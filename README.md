@@ -198,14 +198,18 @@ On any failure the flag is cleared and the item stays queued for the next succes
 ├── restart.sh                  # Restart Frigate
 ├── update.sh                   # Pull latest Frigate image
 ├── config/
-│   └── config.yml              # Frigate NVR configuration
+│   └── config.example.yml      # Frigate config template (copy → config.yml)
 └── agent/
     ├── maritime_agent.py       # Orchestrator (detect → transcode → queue → upload)
     ├── requirements.txt        # Python dependencies (requests, schedule)
-    ├── queue.db                # SQLite store-and-forward queue (runtime)
-    ├── queue_storage/          # Transient files awaiting upload
-    └── evidence/               # Local evidence (HD video + snapshots)
+    ├── .env.example            # Agent config template (copy → .env)
+    ├── queue.db                # SQLite store-and-forward queue   (runtime, gitignored)
+    ├── queue_storage/          # Transient files awaiting upload  (runtime, gitignored)
+    └── evidence/               # Local evidence (HD video + snapshots) (runtime, gitignored)
 ```
+
+> **Secrets are never committed.** `config/config.yml` and `agent/.env` are listed in `.gitignore`;
+> only the `*.example.*` templates are tracked. Copy the templates and fill in your own values.
 
 ---
 
@@ -227,9 +231,22 @@ cd maritime-edge-nvr-alert-system
 
 ### 2. Configure
 
-Edit `config/config.yml` and set your camera RTSP URLs, detection zones, and retention policy.
-Edit the constants at the top of `agent/maritime_agent.py` (or supply them via environment
-variables) for your ship code, shore server URL, and API key.
+**Frigate** — copy the template and set your camera RTSP URLs, detection zones, and retention policy:
+
+```bash
+cp config/config.example.yml config/config.yml
+# then edit config/config.yml (replace <CAMERA_USER>, <CAMERA_PASSWORD>, <CAMERA_IP>)
+```
+
+**Agent** — copy the template and set your ship code, shore server URL, and API key:
+
+```bash
+cp agent/.env.example agent/.env
+# then edit agent/.env
+```
+
+All agent settings are read from environment variables, so you can also inject them via systemd
+or Docker instead of a `.env` file. The `.env` file itself is **never committed**.
 
 ### 3. Run Frigate NVR
 

@@ -1,0 +1,241 @@
+# ============================================
+# Frigate NVR Configuration — EXAMPLE
+# Hardware: Intel i7-6700 + HD Graphics 530
+# Optimized for: 4 Kamera 24/7, Person+Boat Detection
+# Target CPU: < 90% | detect: 640×360 @ 3fps
+# ============================================
+# Salin file ini menjadi config.yml lalu sesuaikan
+# URL RTSP kamera Anda (lihat placeholder <CAMERA_...>):
+#     cp config.example.yml config.yml
+# File config.yml TIDAK ikut ke git (lihat .gitignore).
+# ============================================
+
+mqtt:
+  enabled: false
+  # Aktifkan jika menggunakan Home Assistant:
+  # host: 192.168.1.xxx
+  # port: 1883
+  # user: mqtt_user
+  # password: mqtt_pass
+
+# ============================================
+# DATABASE
+# ============================================
+database:
+  path: /config/frigate.db
+
+# ============================================
+# FFMPEG — Intel VAAPI Hardware Acceleration
+# ============================================
+ffmpeg:
+  hwaccel_args: preset-vaapi
+  output_args:
+    record: preset-record-generic-audio-aac
+
+# ============================================
+# DETECTORS — OpenVINO on Intel HD 530 iGPU
+# ============================================
+detectors:
+  ov:
+    type: openvino
+    device: GPU
+
+model:
+  path: /openvino-model/ssdlite_mobilenet_v2.xml
+  width: 300
+  height: 300
+  labelmap_path: /openvino-model/coco_91cl_bkgr.txt
+
+# ============================================
+# GO2RTC — Low-latency RTSP Restream
+# ============================================
+# Semua kamera di-restream via go2rtc untuk:
+# - Auto reconnect saat stream putus
+# - Shared connection (1 koneksi ke kamera, multiple consumer)
+# - WebRTC low-latency playback di browser
+#
+# PENTING: Ganti URL RTSP sesuai kamera Anda!
+# ============================================
+go2rtc:
+  streams:
+    # ===== KAMERA DEPAN (Hikvision) =====
+    # Mainstream: Channel 101 (1080p/2K) → untuk recording
+    # Substream: Channel 102 (D1/360p) → untuk detection
+    kamera_depan:
+      - rtsp://<CAMERA_USER>:<CAMERA_PASSWORD>@<CAMERA_IP>:554/Streaming/Channels/101
+      - ffmpeg:kamera_depan#video=copy#audio=copy#hardware
+    kamera_depan_sub:
+      - rtsp://<CAMERA_USER>:<CAMERA_PASSWORD>@<CAMERA_IP>:554/Streaming/Channels/102
+
+    # ===== TAMBAH KAMERA LAIN DI SINI =====
+    # Contoh kamera kedua (Hikvision):
+    # kamera_belakang:
+    #   - rtsp://admin:password@IP_KAMERA_2:554/Streaming/Channels/101
+    #   - "ffmpeg:kamera_belakang#video=copy#audio=copy#hardware"
+    # kamera_belakang_sub:
+    #   - rtsp://admin:password@IP_KAMERA_2:554/Streaming/Channels/102
+
+# ============================================
+# OBJECT DETECTION — Person + Boat Only
+# ============================================
+objects:
+  track:
+    - person
+    - boat
+  filters:
+    person:
+      min_area: 1500
+      max_area: 100000
+      min_score: 0.6
+      threshold: 0.75
+    boat:
+      min_area: 1000
+      max_area: 200000
+      min_score: 0.4
+      threshold: 0.6
+
+# ============================================
+# DETECT — Substream resolution (CPU friendly)
+# ============================================
+detect:
+  enabled: true
+  width: 640
+  height: 360
+  fps: 3
+  max_disappeared: 25
+  stationary:
+    interval: 50
+    threshold: 50
+
+# ============================================
+# RECORDING — Continuous Motion + Events
+# ============================================
+record:
+  enabled: true
+  alerts:
+    retain:
+      days: 3
+    pre_capture: 5
+    post_capture: 5
+  detections:
+    retain:
+      days: 3
+    pre_capture: 5
+    post_capture: 5
+  continuous:
+    days: 0       # Tidak menyimpan rekaman non-event
+  motion:
+    days: 0       # Tidak menyimpan rekaman motion biasa (hemat disk)
+snapshots:
+  enabled: true
+  timestamp: true
+  bounding_box: true
+  crop: false
+  retain:
+    default: 7
+
+# ============================================
+# BIRDSEYE — Multi-camera Overview
+# ============================================
+birdseye:
+  enabled: true
+  restream: false
+  width: 1280
+  height: 720
+  quality: 8
+  mode: objects
+
+# ============================================
+# LIVE VIEW
+# ============================================
+live:
+  height: 720
+  quality: 8
+
+# ============================================
+# MOTION DETECTION
+# ============================================
+motion:
+  threshold: 30
+  contour_area: 15
+  improve_contrast: true
+  lightning_threshold: 0.8
+
+# ============================================
+# CAMERAS
+# ============================================
+cameras:
+  # ===== KAMERA DEPAN =====
+  kamera_depan:
+    enabled: true
+    ffmpeg:
+      inputs:
+        - path: rtsp://127.0.0.1:8554/kamera_depan
+          input_args: preset-rtsp-restream
+          roles:
+            - record
+        - path: rtsp://127.0.0.1:8554/kamera_depan_sub
+          input_args: preset-rtsp-restream
+          roles:
+            - detect
+      hwaccel_args: []  # Disable VAAPI untuk detect agar tidak crash (CPU decode 360p sangat ringan)
+    live:
+      streams:
+        kamera_depan_sub: kamera_depan_sub    # SD 640×360 (ringan)
+        kamera_depan: kamera_depan            # HD 1280×720 (kualitas tinggi)
+    detect:
+      enabled: true
+    objects:
+      track:
+        - person
+        - boat
+
+  # === KAMERA TESTING DARI VIDEO MP4 ===
+    zones:
+      warning_zone:
+        coordinates: 0.001,0.006,0,1,0.335,0.998,0.335,0
+        inertia: 2
+        loitering_time: 3
+        objects: person
+        friendly_name: warning zone
+  kamera_test:
+    enabled: true
+    ffmpeg:
+      hwaccel_args: []
+      inputs:
+        - path: /media/frigate/0521.mp4
+          input_args: -re -stream_loop -1 -fflags +genpts+discardcorrupt
+          roles:
+            - record
+            - detect
+
+    detect:
+      enabled: true
+      width: 540
+      height: 960
+      fps: 3
+    objects:
+      track:
+        - boat
+        - person
+    zones:
+      zone_kritis:
+        coordinates: 0.492,0.48,0,0.86,0,0.387,1,0.381,1,0.843
+        inertia: 2
+        loitering_time: 3
+        objects: boat
+        friendly_name: zone kritis
+    motion: {}
+ui:
+  time_format: 24hour
+  date_style: short
+  time_style: medium
+
+# ============================================
+# LOGGER
+# ============================================
+logger:
+  default: info
+  logs:
+    frigate.event: debug
+version: 0.17-0

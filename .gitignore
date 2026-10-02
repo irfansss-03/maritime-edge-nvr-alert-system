@@ -1,0 +1,66 @@
+# ======================================================
+# SECRETS & KONFIGURASI LOKAL (JANGAN DI-PUSH)
+# ======================================================
+.env
+*.env
+config/config.yml          # berisi kredensial kamera — pakai config.example.yml
+config/.jwt_secret
+config/.search_stats.json
+config/.timeline
+config/.vacuum
+config/.exports
+
+# ======================================================
+# PYTHON — virtualenv & cache
+# ======================================================
+agent/agent/
+agent/venv/
+venv/
+.venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# ======================================================
+# RUNTIME STATE & MEDIA (besar / berubah terus)
+# ======================================================
+agent/queue.db
+agent/queue.db-*
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+agent/queue_storage/
+agent/evidence/
+storage/
+media/
+evidence/
+
+# ======================================================
+# LOG
+# ======================================================
+*.log
+logs/
+
+# ======================================================
+# DOKUMEN / ARSIP BESAR (simpan lokal saja)
+# ======================================================
+laporan/
+*.pdf
+*.zip
+*.rar
+
+# ======================================================
+# OS & IDE
+# ======================================================
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.gemini/
+.antigravity/
+*~
+*.swp
+*.bak
