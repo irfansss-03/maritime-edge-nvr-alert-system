@@ -78,6 +78,9 @@ automatically (FIFO) the moment connectivity returns.
 
 ## 🏗️ System Architecture
 
+> 📐 **Deep dive:** see **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** for the full component
+> breakdown, data model, sequence diagrams, design decisions, and failure-mode analysis.
+
 ```
  ┌──────────────────────────────────────────────────────────────────┐
  │                         SHIP  (EDGE NVR)                          │
@@ -197,6 +200,8 @@ On any failure the flag is cleared and the item stays queued for the next succes
 ├── monitor.sh                  # System monitoring
 ├── restart.sh                  # Restart Frigate
 ├── update.sh                   # Pull latest Frigate image
+├── docs/
+│   └── ARCHITECTURE.md         # Architecture deep dive (diagrams, data model, design decisions)
 ├── config/
 │   └── config.example.yml      # Frigate config template (copy → config.yml)
 └── agent/
